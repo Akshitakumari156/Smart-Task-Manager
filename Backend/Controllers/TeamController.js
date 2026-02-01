@@ -2,19 +2,36 @@ const {TeamModel,UserModel}=require("../Models/db");
 const express=require("express");
 const app=express();
 app.use(express.json());
-const CreateTeam=async(req,res)=>{
-    try{
-      const {name,managerId}=req.body;
-      const newTeam = await TeamModel.create({
+const CreateTeam = async (req, res) => {
+  try {
+    const { name, members } = req.body;
+    const managerId = req.user._id;
+
+    if (!name) {
+      return res.status(400).json({ message: "Team name is required" });
+    }
+
+    const formattedMembers = members.map(userId => ({
+      user: userId,
+      status: "accepted"
+    }));
+
+    const newTeam = await TeamModel.create({
       name,
       manager: managerId,
-      members: []
-      });
-      res.status(201).json(newTeam);
-    }catch(error){
-      res.status(500).json({ error: "Server Error" });
-    }
-}
+      members: formattedMembers
+    });
+
+    res.status(201).json({
+      success: true,
+      team: newTeam
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 const GetAllTeams=async(req,res)=>{
     try{
@@ -25,32 +42,40 @@ const GetAllTeams=async(req,res)=>{
     }
 }
 
-const AddMember=async(req,res)=>{
-    try{
-        const { email } = req.body;
-        const { teamId } = req.params;
-        const team = await TeamModel.findById(teamId);
-        if (!team) return res.status(404).json({ message: "Team not found" });
-        const user = await UserModel.findOne({ email });
-        if (!user) {
-        return res.status(404).json({ message: "No user found with this email" });
-        }
-        const alreadyMember = team.members.find(member => member.email === email);
-        if (alreadyMember) {
-          return res.status(400).json({ message: "This user is already in the team" });
-        }
-        await team.save();
+const AddMember = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const { teamId } = req.params;
 
-        res.status(201).json({
-          message: "Member added successfully",
-          team
-        });
-        
-    }catch(error){
-         console.error(error);
-        res.status(500).json({ message: "Server error", error: error.message });
+    const team = await TeamModel.findById(teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+
+    const user = await UserModel.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const alreadyMember = team.members.some(
+      m => m.user?.toString() === user._id.toString()
+    );
+    if (alreadyMember) {
+      return res.status(400).json({ message: "User already in team" });
     }
-}
+
+    team.members.push({
+      user: user._id,
+      email: user.email,
+      name: user.name,
+      status: "accepted"
+    });
+
+    await team.save();
+
+    res.status(201).json({ success: true, team });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 const DeleteMemeber=async(req,res)=>{
     try{

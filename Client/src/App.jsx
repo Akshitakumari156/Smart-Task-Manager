@@ -4,8 +4,8 @@ import Signup from "./pages/Signup";
 import ManagerLayout from "./pages/Manager/ManagerLayout";
 import ManagerHome from "./pages/Manager/ManagerHome";
 import ManagerTask from "./pages/Manager/ManagerTask";
-// import EmployeeLayout from "./pages/Employee/EmployeeLayout";
-// import EmployeeHome from "./pages/Employee/EmployeeHome";
+import EmployeeLayout from "./pages/Employee/EmployeeLayout";
+ import EmployeeHome from "./pages/Employee/EmployeeHome";
 // import EmployeeTasks from "./pages/Employee/EmployeeTasks";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import PublicRoute from "./pages/PublicRoute";
@@ -58,7 +58,7 @@ function App() {
         }
       >
         <Route path="/home-employee" element={<EmployeeHome />} />
-        <Route path="/tasks-employee" element={<EmployeeTasks />} />
+       {/* // <Route path="/tasks-employee" element={<EmployeeTasks />} /> */}
       </Route>
     </Routes>
   );

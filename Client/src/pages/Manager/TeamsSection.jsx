@@ -1,251 +1,237 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Users, X, Trash2 } from "lucide-react";
 
-const mockTeams = [
-  {
-    id: 1,
-    name: "Product Development",
-    members: [
-      { id: 1, name: "Akshita", email: "akshita@example.com" },
-      { id: 2, name: "Ravi", email: "ravi@example.com" },
-    ],
-  },
-  {
-    id: 2,
-    name: "UI/UX Designers",
-    members: [{ id: 3, name: "Simran", email: "simran@example.com" }],
-  },
-];
-
-const mockEmployees = [
-  { id: 11, name: "Shreya", email: "shreya@example.com" },
-  { id: 12, name: "Aman", email: "aman@example.com" },
-  { id: 13, name: "Vishal", email: "vishal@example.com" },
-];
-
 const TeamsSection = () => {
-  const [teams, setTeams] = useState(mockTeams);
-  const [employees, setEmployees] = useState(mockEmployees);
+  const [teams, setTeams] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTeam, setActiveTeam] = useState(null);
+
   const [newTeamName, setNewTeamName] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
 
-  const cardHover = {
-    scale: 1.05,
-    rotateX: 2,
-    rotateY: -2,
-    transition: { type: "spring", stiffness: 300 },
-  };
-
-  // Create team
-  const handleCreateTeam = () => {
-    if (newTeamName.trim() === "") return;
-    const newTeam = {
-      id: Date.now(),
-      name: newTeamName,
-      members: [],
+  const token = localStorage.getItem("token");
+  // Fetch employees connected to manager
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/getEmployee`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        console.log(data);
+        setEmployees(data.employees || []);
+      } catch (err) {
+        console.error(err);
+      }
     };
-    setTeams([...teams, newTeam]);
-    setNewTeamName("");
-    setShowCreateModal(false);
+
+    fetchEmployees();
+  }, [token]);
+
+  // Fetch teams of manager
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        const managerId = JSON.parse(atob(token.split(".")[1]))._id;
+
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/${managerId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        setTeams(data || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchTeams();
+  }, [token]);
+
+  /* ================= CREATE TEAM ================= */
+
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/teams/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newTeamName,
+          members: selectedEmployees
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setTeams(prev => [...prev, data.team]);
+        setShowCreateModal(false);
+        setNewTeamName("");
+        setSelectedEmployees([]);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // Add existing employee to team
-  const handleAddEmployeeToTeam = () => {
-    if (!selectedEmployee) return;
+  /* ================= REMOVE MEMBER ================= */
 
-    const employeeToAdd = employees.find((emp) => emp.id === parseInt(selectedEmployee));
-    if (!employeeToAdd) return;
-
-    const updatedTeams = teams.map((team) => {
-      if (team.id === activeTeam.id) {
-        // Prevent duplicates
-        const alreadyMember = team.members.some((m) => m.id === employeeToAdd.id);
-        if (!alreadyMember) {
-          return { ...team, members: [...team.members, employeeToAdd] };
+  const handleRemoveMember = async (teamId, memberId) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/teams/${teamId}/remove-member/${memberId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      }
-      return team;
-    });
+      );
 
-    setTeams(updatedTeams);
-    setSelectedEmployee("");
+      const data = await res.json();
+      if (data.team) {
+        setTeams(prev =>
+          prev.map(t => (t._id === teamId ? data.team : t))
+        );
+        setActiveTeam(data.team);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // Remove member from team
-  const handleRemoveMember = (memberId) => {
-    const updatedTeams = teams.map((team) => {
-      if (team.id === activeTeam.id) {
-        return {
-          ...team,
-          members: team.members.filter((m) => m.id !== memberId),
-        };
-      }
-      return team;
-    });
-    setTeams(updatedTeams);
-  };
+  /* ================= UI ================= */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white p-8">
+    <div className="min-h-screen bg-[#0f172a] text-white p-8">
       {/* Header */}
       <div className="flex justify-between items-center mb-10">
-        <motion.h1
-          className="text-4xl font-extrabold tracking-wide bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          Teams Dashboard
-        </motion.h1>
+        <h1 className="text-4xl font-bold">Teams Dashboard</h1>
 
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-5 py-2 bg-purple-600 rounded-xl shadow-lg hover:bg-purple-700 transition-all"
+        <button
           onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg"
         >
           <Plus size={18} /> Create Team
-        </motion.button>
+        </button>
       </div>
 
       {/* Teams Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {teams.map((team) => (
-          <motion.div
-            key={team.id}
-            whileHover={cardHover}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {teams.map(team => (
+          <div
+            key={team._id}
             onClick={() => setActiveTeam(team)}
-            className="bg-[#1e293b] rounded-2xl p-6 shadow-xl relative overflow-hidden group cursor-pointer"
+            className="bg-[#1e293b] p-6 rounded-xl cursor-pointer"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-pink-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <h2 className="text-2xl font-bold mb-3">{team.name}</h2>
-              <div className="flex items-center gap-2 text-gray-400">
-                <Users size={18} />
-                <span>{team.members.length} Members</span>
-              </div>
+            <h2 className="text-xl font-semibold">{team.name}</h2>
+            <div className="flex items-center gap-2 text-gray-400 mt-2">
+              <Users size={16} />
+              {team.members.length} Members
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      {/* Create Team Modal */}
+      {/* ================= CREATE TEAM MODAL ================= */}
       <AnimatePresence>
         {showCreateModal && (
-          <motion.div
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-[#1e293b] rounded-2xl p-8 w-full max-w-md relative shadow-2xl"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-            >
+          <motion.div className="fixed inset-0 bg-black/70 flex justify-center items-center">
+            <motion.div className="bg-[#1e293b] p-6 rounded-xl w-full max-w-md">
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-white"
                 onClick={() => setShowCreateModal(false)}
+                className="float-right"
               >
-                <X size={24} />
+                <X />
               </button>
-              <h3 className="text-2xl font-bold mb-6">Create New Team</h3>
+
+              <h2 className="text-2xl font-bold mb-4">Create Team</h2>
+
               <input
-                type="text"
-                placeholder="Enter team name..."
                 value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                className="w-full p-3 rounded-lg bg-[#0f172a] border border-gray-600 focus:border-purple-500 outline-none text-white"
+                onChange={e => setNewTeamName(e.target.value)}
+                placeholder="Team Name"
+                className="w-full p-2 rounded bg-[#0f172a] mb-4"
               />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+
+              <h4 className="font-semibold mb-2">Select Employees</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {employees.map(emp => (
+                  <label key={emp._id} className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      value={emp._id}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedEmployees(prev => [...prev, emp._id]);
+                        } else {
+                          setSelectedEmployees(prev =>
+                            prev.filter(id => id !== emp._id)
+                          );
+                        }
+                      }}
+                    />
+                    {emp.name} ({emp.email})
+                  </label>
+                ))}
+              </div>
+
+              <button
                 onClick={handleCreateTeam}
-                className="mt-6 w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-all font-semibold shadow-lg"
+                className="w-full mt-4 bg-purple-600 py-2 rounded-lg"
               >
                 Create Team
-              </motion.button>
+              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Team Details Modal */}
+      {/* ================= TEAM DETAILS MODAL ================= */}
       <AnimatePresence>
         {activeTeam && (
-          <motion.div
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-[#1e293b] rounded-2xl p-8 w-full max-w-lg relative shadow-2xl"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-            >
+          <motion.div className="fixed inset-0 bg-black/70 flex justify-center items-center">
+            <motion.div className="bg-[#1e293b] p-6 rounded-xl w-full max-w-lg">
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-white"
                 onClick={() => setActiveTeam(null)}
+                className="float-right"
               >
-                <X size={24} />
+                <X />
               </button>
 
-              <h3 className="text-2xl font-bold mb-6">
-                {activeTeam.name} Members
-              </h3>
+              <h2 className="text-2xl font-bold mb-4">
+                {activeTeam.name}
+              </h2>
 
-              {/* Member List */}
-              <div className="space-y-4 max-h-60 overflow-y-auto">
-                {activeTeam.members.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between bg-[#0f172a] p-3 rounded-lg border border-gray-700"
-                  >
-                    <div>
-                      <p className="font-semibold">{member.name}</p>
-                      <p className="text-sm text-gray-400">{member.email}</p>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveMember(member.id)}
-                      className="text-red-500 hover:text-red-600 transition"
-                    >
-                      <Trash2 size={20} />
-                    </button>
+              {activeTeam.members.map(member => (
+                <div
+                  key={member._id}
+                  className="flex justify-between items-center bg-[#0f172a] p-2 rounded mb-2"
+                >
+                  <div>
+                    <p>{member.name}</p>
+                    <p className="text-sm text-gray-400">{member.email}</p>
                   </div>
-                ))}
-              </div>
-
-              {/* Add Existing Employee */}
-              <div className="mt-6">
-                <h4 className="text-lg font-semibold mb-2">Add Employee</h4>
-                <div className="flex gap-3">
-                  <select
-                    value={selectedEmployee}
-                    onChange={(e) => setSelectedEmployee(e.target.value)}
-                    className="flex-1 p-3 rounded-lg bg-[#0f172a] border border-gray-600 text-white"
+                  <button
+                    onClick={() =>
+                      handleRemoveMember(activeTeam._id, member._id)
+                    }
+                    className="text-red-500"
                   >
-                    <option value="">Select Employee</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name} ({emp.email})
-                      </option>
-                    ))}
-                  </select>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleAddEmployeeToTeam}
-                    className="px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 transition-all shadow-lg"
-                  >
-                    Add
-                  </motion.button>
+                    <Trash2 size={18} />
+                  </button>
                 </div>
-              </div>
+              ))}
             </motion.div>
           </motion.div>
         )}

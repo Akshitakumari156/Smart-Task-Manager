@@ -1,17 +1,17 @@
 const moongose=require("mongoose");
 const mainConnection = moongose.createConnection(
-  "mongodb+srv://akshita:OJUpX2U63DrM381X@cluster0.k3jpfnc.mongodb.net/auth-db"
+  "mongodb+srv://akshitakumari156_db_user:70iPkLXfgiGSGaKo@cluster0.jcmnw64.mongodb.net/auth-db"
 );
 const taskConnection = moongose.createConnection(
-  "mongodb+srv://akshita:OJUpX2U63DrM381X@cluster0.k3jpfnc.mongodb.net/task-db"
+  "mongodb+srv://akshitakumari156_db_user:70iPkLXfgiGSGaKo@cluster0.jcmnw64.mongodb.net/task-db"
 );
 
 const teamsConnection=moongose.createConnection(
-   "mongodb+srv://akshita:OJUpX2U63DrM381X@cluster0.k3jpfnc.mongodb.net/teams-db"
+   "mongodb+srv://akshitakumari156_db_user:70iPkLXfgiGSGaKo@cluster0.jcmnw64.mongodb.net/teams-db"
 );
 
 const connectionRequest=moongose.createConnection(
-  "mongodb+srv://akshita:OJUpX2U63DrM381X@cluster0.k3jpfnc.mongodb.net/connection-db"
+  "mongodb+srv://akshitakumari156_db_user:70iPkLXfgiGSGaKo@cluster0.jcmnw64.mongodb.net/connection-db"
 )
 mainConnection.on("connected", () => {
   console.log("✅ Connected to auth-db");

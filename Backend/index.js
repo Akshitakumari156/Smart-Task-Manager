@@ -8,6 +8,7 @@ const TaskRouter=require("./Routes/TaskRouter");
 const GetEmailRouter=require("./Routes/GetEmailRouter");
 const GetProfileRouter=require("./Routes/GetProfile");
 const TeamRouter=require("./Routes/TeamRoutes");
+const GetEmployee=require("./Routes/GetEmployee");
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use("/api",GetEmailRouter);
 app.use("/api/user",uploadRoute);
 app.use("/api/user",GetProfileRouter);
 app.use("/api/manager",TeamRouter);
+app.get("/api",GetEmployee);
 app.get("/ping",(req,res)=>{
     res.send("PONG")
 })
